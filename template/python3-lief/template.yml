@@ -1,10 +1,6 @@
 language: python3
 fprocess: python3 index.py
 build_options:
-  - name: lief
-    packages:
-      - cmake
-      - cppcheck
   - name: dev
     packages:
       - make

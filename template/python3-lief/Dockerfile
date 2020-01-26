@@ -1,17 +1,35 @@
 FROM openfaas/classic-watchdog:0.18.1 as watchdog
 
-FROM python:3-alpine
+#FROM python:3-alpine
+FROM ubuntu:18.04
+
 
 # Allows you to add additional packages via build-arg
 ARG ADDITIONAL_PACKAGE
 
 COPY --from=watchdog /fwatchdog /usr/bin/fwatchdog
 RUN chmod +x /usr/bin/fwatchdog
-RUN apk --no-cache add ca-certificates ${ADDITIONAL_PACKAGE}
 
+RUN apt-get update && \
+    apt-get -y install python3 \
+                       python3-dev \
+                       python3-pip
+
+RUN pip3 install --trusted-host pypi.org \
+                 --trusted-host pypi.python.org \
+                 --trusted-host files.pythonhosted.org \
+                 --upgrade pip setuptools && \
+                 if [ ! -e /usr/bin/pip ]; then ln -s pip3 /usr/bin/pip ; fi && \
+                 if [[ ! -e /usr/bin/python ]]; then ln -sf /usr/bin/python3 /usr/bin/python; fi
+
+RUN apt-get update && apt-get -y install ca-certificates ${ADDITIONAL_PACKAGE}
+
+# cleanup apt
+RUN rm -rf /var/lib/apt/lists/*
 
 # Add non root user
-RUN addgroup -S app && adduser app -S -G app
+#RUN addgroup -S app && adduser app -S -G app
+RUN addgroup app && adduser app --ingroup app
 
 WORKDIR /home/app/
 
@@ -49,5 +67,6 @@ ENV fprocess="python3 index.py"
 EXPOSE 8080
 
 HEALTHCHECK --interval=3s CMD [ -e /tmp/.lock ] || exit 1
+
 
 CMD ["fwatchdog"]
